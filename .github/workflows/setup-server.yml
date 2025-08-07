@@ -14,14 +14,13 @@ jobs:
       - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.VM_IP }} >> ~/.ssh/known_hosts
 
       - name: Install Docker and Git, then clone or pull repo
         run: |
           ssh ${{ secrets.VM_USER }}@${{ secrets.VM_IP }} << 'EOF'
-            # Install Docker & Git if missing
             if ! command -v docker &> /dev/null; then
               sudo apt update
               sudo apt install -y docker.io git
@@ -29,7 +28,6 @@ jobs:
               sudo systemctl start docker
             fi
 
-            # Check for repo folder and pull or clone accordingly
             if [ -d "$HOME/n8n-hbrm/.git" ]; then
               echo "Repo exists. Pulling latest changes..."
               cd ~/n8n-hbrm && git pull origin main
