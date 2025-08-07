@@ -18,29 +18,37 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.VM_IP }} >> ~/.ssh/known_hosts
 
-      - name: Setup and Deploy to EC2 VM
+      - name: SSH and Deploy
         run: |
-          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_IP }} << 'EOF'
-            # Install Docker Compose (v2) correctly
-            sudo apt update
-            sudo apt install -y ca-certificates curl gnupg git
-            sudo install -m 0755 -d /etc/apt/keyrings
-            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
-            echo \
-              "deb [arch=\$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-              \$(. /etc/os-release && echo "\$VERSION_CODENAME") stable" | \
-              sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-            sudo apt update
-            sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+          ssh -o StrictHostKeyChecking=no ${{ secrets.VM_USER }}@${{ secrets.VM_IP }} << 'EOF'
+            set -e
 
-            # Clone repo if not present
-            if [ ! -d "~/n8n-hbrm" ]; then
-              git clone https://github.com/aravindan888/n8n-hbrm ~/n8n-hbrm
+            # Remove broken Docker sources if any
+            sudo rm -f /etc/apt/sources.list.d/docker.list
+
+            # Install Docker and Compose v2
+            sudo apt-get update
+            sudo apt-get install -y ca-certificates curl gnupg lsb-release
+
+            sudo mkdir -p /etc/apt/keyrings
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
+
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+            https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | \
+            sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+            sudo apt-get update
+            sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+            # Clone repo if not already present
+            if [ ! -d "$HOME/n8n-hbrm/.git" ]; then
+              git clone https://github.com/aravindan888/n8n-hbrm $HOME/n8n-hbrm
             fi
 
-            cd ~/n8n-hbrm
+            cd $HOME/n8n-hbrm
             git pull origin main
 
-            docker compose -f docker/docker-compose.yml down
+            # Build and run services
+            docker compose -f docker/docker-compose.yml down || true
             docker compose -f docker/docker-compose.yml up -d --build
           EOF
