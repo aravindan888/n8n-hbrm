@@ -1,40 +1,23 @@
-name: Setup Server
+- name: Setup and Deploy to EC2 VM
+  run: |
+    ssh ${{ secrets.VM_USER }}@${{ secrets.VM_IP }} << 'EOF'
+      # Install Docker and git if not present
+      if ! command -v docker &> /dev/null; then
+        sudo apt update
+        sudo apt install -y docker.io docker-compose git
+      fi
 
-on:
-  workflow_dispatch:
+      docker -v
+      docker-compose -v
 
-jobs:
-  setup:
-    runs-on: ubuntu-latest
+      # Clone repo if not present
+      if [ ! -d "~/n8n-hbrm" ]; then
+        git clone https://github.com/aravindan888/n8n-hbrm ~/n8n-hbrm
+      fi
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      cd ~/n8n-hbrm
+      git pull origin main
 
-      - name: Set up SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.VM_IP }} >> ~/.ssh/known_hosts
-
-      - name: Setup and Deploy to EC2 VM
-        run: |
-          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_IP }} << 'EOF'
-            # Install Docker and git if not present
-            if ! command -v docker &> /dev/null; then
-              sudo apt update
-              sudo apt install -y docker.io docker-compose git
-            fi
-
-            # Clone repo if not present
-            if [ ! -d "~/n8n-hbrm" ]; then
-              git clone https://github.com/aravindan888/n8n-hbrm ~/n8n-hbrm
-            fi
-
-            cd ~/n8n-hbrm
-            git pull origin main
-
-            docker compose -f docker/docker-compose.yml down
-            docker compose -f docker/docker-compose.yml up -d --build
-          EOF
+      docker-compose -f docker/docker-compose.yml down
+      docker-compose -f docker/docker-compose.yml up -d --build
+    EOF
