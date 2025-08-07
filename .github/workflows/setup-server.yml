@@ -18,20 +18,21 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.VM_IP }} >> ~/.ssh/known_hosts
 
-      - name: SSH and Setup Docker
+      - name: Install Docker and Git, then clone repo
         run: |
           ssh ${{ secrets.VM_USER }}@${{ secrets.VM_IP }} << 'EOF'
-            # Install Docker and git
-            sudo apt update
-            sudo apt install -y docker.io git
+            # Install Docker & Git if missing
+            if ! command -v docker &> /dev/null; then
+              sudo apt update
+              sudo apt install -y docker.io git
+              sudo systemctl enable docker
+              sudo systemctl start docker
+            fi
 
-            # Start and enable Docker
-            sudo systemctl start docker
-            sudo systemctl enable docker
-            sudo usermod -aG docker $USER
-
-            # Clone the repo if needed
+            # Clone repo if not already cloned
             if [ ! -d "~/n8n-hbrm" ]; then
               git clone https://github.com/aravindan888/n8n-hbrm ~/n8n-hbrm
+            else
+              cd ~/n8n-hbrm && git pull origin main
             fi
           EOF
