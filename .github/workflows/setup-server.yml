@@ -1,23 +1,43 @@
-- name: Setup and Deploy to EC2 VM
-  run: |
-    ssh ${{ secrets.VM_USER }}@${{ secrets.VM_IP }} << 'EOF'
-      # Install Docker and git if not present
-      if ! command -v docker &> /dev/null; then
-        sudo apt update
-        sudo apt install -y docker.io docker-compose git
-      fi
+name: Setup Server
 
-      docker -v
-      docker-compose -v
+on:
+  workflow_dispatch:
 
-      # Clone repo if not present
-      if [ ! -d "~/n8n-hbrm" ]; then
-        git clone https://github.com/aravindan888/n8n-hbrm ~/n8n-hbrm
-      fi
+jobs:
+  setup:
+    runs-on: ubuntu-latest
 
-      cd ~/n8n-hbrm
-      git pull origin main
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      docker-compose -f docker/docker-compose.yml down
-      docker-compose -f docker/docker-compose.yml up -d --build
-    EOF
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.VM_IP }} >> ~/.ssh/known_hosts
+
+      - name: Setup and Deploy to EC2 VM
+        run: |
+          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_IP }} << 'EOF'
+            set -e
+
+            # Install Docker and Git if not installed
+            if ! command -v docker &> /dev/null; then
+              sudo apt update
+              sudo apt install -y docker.io docker-compose git
+              sudo systemctl start docker
+              sudo systemctl enable docker
+            fi
+
+            # Clone the repo if not already present
+            if [ ! -d "$HOME/n8n-hbrm" ]; then
+              git clone https://github.com/aravindan888/n8n-hbrm.git $HOME/n8n-hbrm
+            fi
+
+            cd $HOME/n8n-hbrm
+            git pull origin main
+
+            docker compose -f docker/docker-compose.yml up -d --build
+          EOF
