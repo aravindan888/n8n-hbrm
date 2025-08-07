@@ -8,17 +8,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout repo (on GitHub side)
+        uses: actions/checkout@v4
 
       - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.VM_IP }} >> ~/.ssh/known_hosts
 
-      - name: Install Docker and Git, then clone repo
+      - name: Install Docker and Git, then clone or pull repo
         run: |
           ssh ${{ secrets.VM_USER }}@${{ secrets.VM_IP }} << 'EOF'
             # Install Docker & Git if missing
@@ -29,10 +29,12 @@ jobs:
               sudo systemctl start docker
             fi
 
-            # Clone repo if not already cloned
-            if [ ! -d "~/n8n-hbrm" ]; then
-              git clone https://github.com/aravindan888/n8n-hbrm ~/n8n-hbrm
-            else
+            # Check for repo folder and pull or clone accordingly
+            if [ -d "$HOME/n8n-hbrm/.git" ]; then
+              echo "Repo exists. Pulling latest changes..."
               cd ~/n8n-hbrm && git pull origin main
+            else
+              echo "Cloning repo..."
+              git clone https://github.com/aravindan888/n8n-hbrm ~/n8n-hbrm
             fi
           EOF
