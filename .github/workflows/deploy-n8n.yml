@@ -14,16 +14,13 @@ jobs:
       - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_KEY_B64 }}" | base64 -d > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.VM_IP }} >> ~/.ssh/known_hosts
 
       - name: SSH and deploy n8n
-        env:
-          SSH_USER: ${{ secrets.VM_USER }}
-          SSH_HOST: ${{ secrets.VM_IP }}
         run: |
-          ssh $SSH_USER@$SSH_HOST "bash -c '
+          ssh -o StrictHostKeyChecking=no ${{ secrets.VM_USER }}@${{ secrets.VM_IP }} '
             chmod +x ~/n8n-hbrm/scripts/deploy_n8n.sh &&
-            ~/n8n-hbrm/scripts/deploy_n8n.sh
-          '"
+            bash ~/n8n-hbrm/scripts/deploy_n8n.sh
+          '
