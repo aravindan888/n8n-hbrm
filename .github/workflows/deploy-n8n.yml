@@ -19,8 +19,11 @@ jobs:
           ssh-keyscan -H ${{ secrets.VM_IP }} >> ~/.ssh/known_hosts
 
       - name: SSH and deploy n8n
+        env:
+          SSH_USER: ${{ secrets.VM_USER }}
+          SSH_HOST: ${{ secrets.VM_IP }}
         run: |
-          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_IP }} '
+          ssh $SSH_USER@$SSH_HOST "bash -c '
             chmod +x ~/n8n-hbrm/scripts/deploy_n8n.sh &&
-            bash ~/n8n-hbrm/scripts/deploy_n8n.sh
-          '
+            ~/n8n-hbrm/scripts/deploy_n8n.sh
+          '"
