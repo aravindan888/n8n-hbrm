@@ -20,4 +20,7 @@ jobs:
 
       - name: SSH and deploy n8n
         run: |
-          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_IP }} 'bash ~/n8n-hbrm/scripts/deploy_n8n.sh'
+          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_IP }} '
+            chmod +x ~/n8n-hbrm/scripts/deploy_n8n.sh &&
+            bash ~/n8n-hbrm/scripts/deploy_n8n.sh
+          '
