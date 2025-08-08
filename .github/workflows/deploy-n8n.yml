@@ -1,0 +1,23 @@
+name: Deploy n8n
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.VM_IP }} >> ~/.ssh/known_hosts
+
+      - name: SSH and deploy n8n
+        run: |
+          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_IP }} 'bash ~/n8n-hbrm/scripts/deploy_n8n.sh'
