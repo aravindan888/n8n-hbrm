@@ -16,13 +16,4 @@ This project simplifies provisioning, deployment, and backups of the n8n workflo
 
 ---
 
-##  Repository Structure
 
-```bash
-n8n-hbrm/
-├── .github/workflows/        # GitHub Actions workflows
-│   ├── setup-server.yml      # Stage 1 – Sets up Docker & clones repo
-│   └── deploy-n8n.yml        # Stage 2 – (To be added) Deploy n8n via Docker
-├── docker-compose.yml        # (Planned) n8n service + dependencies
-├── .env.example              # Sample environment file
-└── README.md                 # Project documentation
