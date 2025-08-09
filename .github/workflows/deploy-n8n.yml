@@ -6,21 +6,61 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+        
+      - name: Validate secrets
+        run: |
+          if [ -z "${{ secrets.SSH_KEY_B64 }}" ]; then
+            echo "Error: SSH_KEY_B64 secret is not set or is empty"
+            exit 1
+          fi
+          if [ -z "${{ secrets.VM_IP }}" ]; then
+            echo "Error: VM_IP secret is not set or is empty"
+            exit 1
+          fi
+          if [ -z "${{ secrets.VM_USER }}" ]; then
+            echo "Error: VM_USER secret is not set or is empty"
+            exit 1
+          fi
+          echo "All required secrets are present"
+          
       - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_KEY_B64 }}" | base64 -d > ~/.ssh/id_rsa
+          
+          # Verify the key was decoded properly
+          if [ ! -s ~/.ssh/id_rsa ]; then
+            echo "Error: SSH key file is empty after decoding"
+            exit 1
+          fi
+          
           chmod 600 ~/.ssh/id_rsa
+          
+          # Verify key format
+          if ! ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null 2>&1; then
+            echo "Error: Invalid SSH private key format"
+            exit 1
+          fi
+          
+          echo "SSH key setup completed successfully"
           ssh-keyscan -H ${{ secrets.VM_IP }} >> ~/.ssh/known_hosts
-
+          
+      - name: Test SSH connection
+        run: |
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${{ secrets.VM_USER }}@${{ secrets.VM_IP }} 'echo "SSH connection successful"'
+          
       - name: SSH and deploy n8n
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.VM_USER }}@${{ secrets.VM_IP }} '
-            chmod +x ~/n8n-hbrm/scripts/deploy_n8n.sh &&
+            if [ ! -f ~/n8n-hbrm/scripts/deploy_n8n.sh ]; then
+              echo "Error: deploy_n8n.sh script not found"
+              exit 1
+            fi
+            echo "Found deployment script, starting deployment..."
+            chmod +x ~/n8n-hbrm/scripts/deploy_n8n.sh
             bash ~/n8n-hbrm/scripts/deploy_n8n.sh
           '
